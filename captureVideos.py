@@ -1,15 +1,17 @@
 import os
 import platform
 from datetime import datetime
-import keyboard
+#import keyboard
 import shortuuid
-
+from pathlib import Path
+import psutil
+    
 ####
 ####  Setup some universally used variables...
 ####
 
 #  --->>> *The IS_TEST_MODE variable should *NORMALLY* be set to False...*
-IS_TEST_MODE = False
+IS_TEST_MODE = True
 testClipMax = 2
 
 #  This is UUID that will be prefixed to every file name to 
@@ -17,11 +19,13 @@ testClipMax = 2
 uniqueSessionId = shortuuid.uuid()
 
 #  Settings for determining how to actually generate a video clip...
+preferLargestAvailableMount = True
+mountpointPrefix = ""
 targetOutputDirectory = ""
 videoCmd = ""
 preferredRecorder = "default"
 videoBinaryDirectory = ""
-recordingClipLengthInMinutes = 3
+recordingClipLengthInMinutes = 1
 recordingClipInMilliseconds = recordingClipLengthInMinutes * 60 * 1000
 
 #  Flags used by the script's internal logic to determine if
@@ -29,6 +33,24 @@ recordingClipInMilliseconds = recordingClipLengthInMinutes * 60 * 1000
 keepRecording = True
 clipCount = 0
 
+#  If 'preferLargestAvailableMount' is set to True,
+#  the we need to determine the root directory to use
+#  for dumping the clips into...
+if(preferLargestAvailableMount):
+    partitions = psutil.disk_partitions()
+    bestMountpointFreeSpace = 0
+    bestMountpoint = ""
+    for p in partitions:
+        testMountpointFreeSpace = psutil.disk_usage(p.mountpoint).free
+        if(testMountpointFreeSpace > bestMountpointFreeSpace):
+            bestMountpoint = str(p.mountpoint);
+            bestMountpointFreeSpace = testMountpointFreeSpace
+            freespaceInMb = bestMountpointFreeSpace / 1048576
+    print("  ")        
+    print("Largest available mount free space is '" + bestMountpoint + "' with " + str(freespaceInMb) + "mb.")
+    print("  ")        
+    mountpointPrefix = bestMountpoint
+    
 #  Determine what base OS we're running on...
 sysType = platform.system()
 
@@ -42,7 +64,15 @@ sysType = platform.system()
 
 #  IF THIS IS A LINUX OR MAC BASED SYSTEM...
 if sysType == "Linux" or sysType == "Mac":
-    targetOutputDirectory = "/"
+    
+    #  Set the directory to dump the video files into...
+    targetOutputDirectory = os.path.expandvars(mountpointPrefix + "$HOME/videoCaptures")
+    print("Output directory set to '" + targetOutputDirectory + "'...")
+    
+    #  Make sure the directory exists...
+    Path(targetOutputDirectory).mkdir(parents=True, exist_ok=True)
+    
+    #  Start making some decisions based on the settings data from above...
     if preferredRecorder == "libcamera" or preferredRecorder == "default":
         videoCmd = (
             "libcamera-vid -t "
@@ -52,7 +82,8 @@ if sysType == "Linux" or sysType == "Mac":
     elif preferredRecorder == "ffmpeg":
         #  Need to fix the time/video length portion of the cmd line...
         videoCmd = "ffmpeg -f pulse -ac 2 -i default -f v4l2 -i /dev/video0 -t 00:01:00 -vcodec libx264 record.h264"
-#  OTHERWISE, IF THIS A WINDOWS BASED SYSTEM...
+
+#  CHECK TO SEE IF THIS A WINDOWS BASED SYSTEM...
 elif sysType == "Windows":
     targetOutputDirectory = "c:\\temp\\"
     if preferredRecorder == "ffmpeg" or preferredRecorder == "default":
@@ -72,7 +103,7 @@ def DisplayTestWarning():
     print("   ")
     print("You are executing this script in test mode!")
     print(
-        "It will not record more than " + str(testClipMax) + " clips before quitting!!!"
+        "It will not record more than >>" + str(testClipMax) + "<< clips before quitting!!!"
     )
     print("   ")
     print("*******************************")
@@ -80,6 +111,15 @@ def DisplayTestWarning():
     print("WARNING!!  WARNING!!  WARNING!!")
     print("*******************************")
     print("*******************************")
+
+def DisplayPostTestWarning():
+    print("   ")
+    print("WARNING!  WARNING!  WARNING!")
+    print("   ")
+    print("THIS SCRIPT IS CURRENTLY IN TEST MODE!")
+    print("   ")
+    print("STOPPING RECORDING NOW!")
+    print("   ")
 
 ####################################
 #####
@@ -94,7 +134,7 @@ while keepRecording:
     #  Grab a file timestamp...
     timeStamp = datetime.now().strftime("%Y-%m-%d~%H_%M_%S")
     #  Construct the full file path and name...
-    filePath = uniqueSessionId + "_" + timeStamp + ".h264"
+    filePath = targetOutputDirectory + "/" + uniqueSessionId + "_" + timeStamp + ".h264"
     #  Construct the video clip recording command line...
     fullCmd = videoBinaryDirectory + videoCmd + " " + filePath
     #  Display the fullCmd for debugging assistance...
@@ -109,15 +149,9 @@ while keepRecording:
     #  Check for IS_TEST_MODE again...
     if IS_TEST_MODE:
         if clipCount >= testClipMax:
-            print("   ")
-            print("WARNING!  WARNING!  WARNING!")
-            print("   ")
-            print("THIS SCRIPT IS CURRENTLY IN TEST MODE!")
-            print("   ")
-            print("STOPPING RECORDING NOW!")
-            print("   ")
+            DisplayPostTestWarning()
             keepRecording = False
-    #  Apparently, this bit requires root mode?  Kinda weird...
+    #  Apparently, this following bit requires root mode?  Kinda weird...
     # if keyboard.read_key() == "x":
     #    keepRecording = false
     #  We also need a way to break out
