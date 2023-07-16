@@ -1,0 +1,10 @@
+{
+  "PreferredRecorder": "ffmpeg",
+  "ScreenWidth": 1920,
+  "ScreenHeight": 1080,
+  "DevicePath": "/dev/video5",
+  "RecordingClipLengthInMinutes": 5,
+  "PreferLargestAvailableMount": true,
+  "FFmpegInputFormat": "",
+  "IsTestMode": false
+}
