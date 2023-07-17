@@ -6,5 +6,6 @@
   "RecordingClipLengthInMinutes": 5,
   "PreferLargestAvailableMount": true,
   "FFmpegInputFormat": "",
-  "IsTestMode": false
+  "IsTestMode": false,
+  "OutputExtension": "mjpg"
 }

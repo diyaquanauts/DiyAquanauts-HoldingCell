@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import subprocess
+import sys
 
 # !pip install shortuuid
 import shortuuid
@@ -17,18 +18,49 @@ from types import SimpleNamespace
 from datetime import datetime
 from pathlib import Path
 
-######################################################
-#  Load JSON config data...
 
-#  Read in config data from JSON file and display...
-f = open('captureVideo.json', mode='rt')
-rawData = json.load(f)
-rawJsonData = json.dumps(rawData, indent=4) 
+######################################################
+#  LOAD CONFIG DATA...
+#
 print("***********************************************")
 print("***       VIDEO CAPTURE CONFIGURATION       ***")
 print("***********************************************")
 print("   ")
-print(rawJsonData) 
+
+modelNameFilePath = "/proc/device-tree/model"
+
+#  Check to make sure the model file exists...
+if(os.path.isfile(modelNameFilePath) != True):
+    print("Unable to find model file at path!")
+    print("   ---> Model filepath: '" + modelNameFilePath + "'")
+    sys.exit("      ***   Please check to see if this is Raspian based OS!   ***")
+
+#  Grab the machine model...
+f = open(modelNameFilePath, mode="rt")
+modelName = f.read()
+f.close()
+modelName = modelName.rstrip('\x00')
+
+print("Detected machine model: '" + modelName + "'...")
+
+#  Concat the JSON config file name...
+configFileName = "captureVideo." + modelName + ".json"
+
+if(os.path.isfile(configFileName) != True):
+    print("Unable to find JSON configuration file!")
+    print("   ---> JSON config filepath: '" + configFileName + "'")
+    sys.exit("      ***   Please check to see if this system has been fully configured!   ***")
+
+print("Using '" + configFileName + "' as configuration source...")
+
+#  Read in config data from JSON file and display...
+f = open(configFileName, mode="rt")
+rawData = json.load(f)
+f.close()
+rawJsonData = json.dumps(rawData, indent=4)
+
+print("   ")
+print(rawJsonData)
 print("   ")
 
 # Parse JSON into an object with attributes corresponding to dict keys.
@@ -44,6 +76,7 @@ devicePath = configObject.DevicePath  # "/dev/video0"
 recordingClipLengthInMinutes = configObject.RecordingClipLengthInMinutes  # 5
 preferLargestAvailableMount = configObject.PreferLargestAvailableMount  # True
 ffmpegInputFormat = configObject.FFmpegInputFormat  # " -input_format mjpeg"
+outputExtension = configObject.OutputExtension  # Determines the output file type
 
 #  --->>> *The IS_TEST_MODE variable should *NORMALLY* be set to False...*
 IS_TEST_MODE = configObject.IsTestMode
@@ -87,8 +120,11 @@ def CheckMountPoint():
                 freespaceInMb = bestMountpointFreeSpace / 1048576
         print("  ")
         print(
-            "Largest available mount free space is '" + bestMountpoint
-            + "' with " + str(freespaceInMb) + "mb."
+            "Largest available mount free space is '"
+            + bestMountpoint
+            + "' with "
+            + str(freespaceInMb)
+            + "mb."
         )
         print("  ")
         global mountpointPrefix
@@ -120,7 +156,8 @@ def SetSystemPrefs():
     #  Start making some decisions based on the settings data from above...
     if preferredRecorder == "libcamera" or preferredRecorder == "default":
         videoCmd = (
-            "libcamera-vid -t " + str(recordingClipInMilliseconds)  # Length of clip...
+            "libcamera-vid -t "
+            + str(recordingClipInMilliseconds)  # Length of clip...
             + " --width " + str(screenWidth)  # Screen X dimensions
             + " --height " + str(screenHeight)  # Screen Y dimensions...
             + " --nopreview "  # Do not show a preview...
@@ -129,12 +166,18 @@ def SetSystemPrefs():
         )
     elif preferredRecorder == "ffmpeg":
         videoCmd = (
-            "ffmpeg -f v4l2" 
+            "ffmpeg -f v4l2"
             + ffmpegInputFormat
-            + " -video_size " + str(screenWidth) + "x" + str(screenHeight)
-            + " -i " + devicePath
-            + " -c copy -t " + str(recordingClipInSeconds)
+            + " -video_size "
+            + str(screenWidth)
+            + "x"
+            + str(screenHeight)
+            + " -i "
+            + devicePath
+            + " -c copy -t "
+            + str(recordingClipInSeconds)
         )
+
 
 """
     #
@@ -296,7 +339,15 @@ while keepRecording:
     timeStamp = datetime.now().strftime("%Y-%m-%d~%H_%M_%S")
 
     #  Construct the full file path and name...
-    filePath = targetOutputDirectory + "/" + uniqueSessionId + "_" + timeStamp + ".mjpg"
+    filePath = (
+        targetOutputDirectory
+        + "/"
+        + uniqueSessionId
+        + "_"
+        + timeStamp
+        + "."
+        + outputExtension
+    )
 
     #  Index the clip count...
     clipCount = clipCount + 1
