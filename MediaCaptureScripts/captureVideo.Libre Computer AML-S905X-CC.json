@@ -1,0 +1,12 @@
+{
+  "PreferredRecorder": "ffmpeg",
+  "ScreenWidth": 1920,
+  "ScreenHeight": 1080,
+  "DevicePath": "/dev/video3",
+  "RecordingPath": "~/usbdrive/Videos",
+  "RecordingClipLengthInMinutes": 5,
+  "PreferLargestAvailableMount": true,
+  "FFmpegInputFormat": "",
+  "IsTestMode": true,
+  "OutputExtension": "h264"
+}

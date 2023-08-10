@@ -1,0 +1,11 @@
+Copy capture*.service files into /usr/... subdir structure
+
+sudo systemctl daemon-reload
+
+sudo chmod 644 /lib/systemd/system/captureAudio.service
+sudo chmod 644 /lib/systemd/system/captureVideo.service
+
+sudo systemctl enable captureAudio.service
+sudo systemctl enable captureVideo.service
+
+sudo reboot
