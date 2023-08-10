@@ -1,9 +1,12 @@
-Copy capture*.service files into /usr/... subdir structure
+Originally from:
+    https://www.dexterindustries.com/howto/run-a-program-on-your-raspberry-pi-at-startup/
 
-sudo systemctl daemon-reload
+Copy capture*.service files into /usr/... subdir structure
 
 sudo chmod 644 /lib/systemd/system/captureAudio.service
 sudo chmod 644 /lib/systemd/system/captureVideo.service
+
+sudo systemctl daemon-reload
 
 sudo systemctl enable captureAudio.service
 sudo systemctl enable captureVideo.service
