@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -17,19 +18,19 @@ from types import SimpleNamespace
 
 # from libcamera import controls
 from datetime import datetime
-from pathlib import Path
 
 import logging
 
 #########################################################
 #  PREPARE SOME LOGGING AND OTHER REQUIRE VARIABLES...
-#  
+#
 #  Force the CWD to the local path of the script...
 #
 scriptFullPath = Path(__file__)
 localDir = str(scriptFullPath.parent)
 print(localDir)
 logFilePath = localDir + "/logs" + sys.argv[1].upper() + ".log"
+stopFile = os.path.join(localDir, "capture.stop")
 
 ######################################################
 #  PREP LOGGER...
@@ -37,13 +38,13 @@ logFilePath = localDir + "/logs" + sys.argv[1].upper() + ".log"
 def prepareLogger():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
     #  stdout_handler = logging.StreamHandler(sys.stdout)
     #  stdout_handler.setLevel(logging.DEBUG)
     #  stdout_handler.setFormatter(formatter)
 
-    global logFilePath  
+    global logFilePath
     file_handler = logging.FileHandler(logFilePath)
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
@@ -53,6 +54,7 @@ def prepareLogger():
 
     return logger
 
+
 ################################
 #  Log a message...
 #
@@ -60,10 +62,18 @@ def log(msg):
     logger.debug(msg)
     print(msg)
 
+########################################################
 #  Get the logger set and append the opening message...
 logger = prepareLogger()
 log("LOG ACTIVATED!")
 log("Log file path set to: " + logFilePath)
+
+#######################################
+#  Remove any 'capture.stop' file...
+#
+if os.path.exists(stopFile):
+    log("Found a 'capture.stop' flag file.  Removing...")
+    os.remove(stopFile)
 
 ######################################################
 #  LOAD CONFIG DATA...
@@ -75,7 +85,7 @@ log("   ")
 
 log("Current directory: " + os.getcwd())
 log("Setting current directory: " + localDir)
-os.chdir(localDir) 
+os.chdir(localDir)
 
 modelNameFilePath = "/proc/device-tree/model"
 
@@ -138,7 +148,7 @@ configObject = json.loads(rawJsonData, object_hook=lambda d: SimpleNamespace(**d
 #  *** THE ALL IMPORTANT SETTINGS ***
 #  Capture related variables we need to set...
 #
-if (captureLabel == "Audio"):
+if captureLabel == "Audio":
     preferredRecorder = configObject.PreferredRecorder
     devicePath = configObject.DevicePath
     recordingQuality = configObject.RecordingQuality
@@ -147,7 +157,7 @@ if (captureLabel == "Audio"):
     ffmpegInputFormat = configObject.FFmpegInputFormat
     outputExtension = configObject.OutputExtension
 
-elif (captureLabel == "Video"):
+elif captureLabel == "Video":
     preferredRecorder = configObject.PreferredRecorder  # "ffmpeg"
     screenWidth = configObject.ScreenWidth  # 1280
     screenHeight = configObject.ScreenHeight  # 720
@@ -193,12 +203,12 @@ def CheckMountPoint():
         bestMountpoint = ""
         for p in partitions:
             testMountpointFreeSpace = psutil.disk_usage(p.mountpoint).free
-            gb = round(testMountpointFreeSpace/(1024 * 1024 * 1024), 2)
+            gb = round(testMountpointFreeSpace / (1024 * 1024 * 1024), 2)
             log("Found mountpoint: " + str(p.mountpoint) + " -- {} GB".format(gb))
             if testMountpointFreeSpace > bestMountpointFreeSpace:
                 bestMountpoint = str(p.mountpoint)
                 bestMountpointFreeSpace = testMountpointFreeSpace
-                bestFreespace = round(bestMountpointFreeSpace/(1024 * 1024 * 1024), 2)
+                bestFreespace = round(bestMountpointFreeSpace / (1024 * 1024 * 1024), 2)
         log("  ")
         log(
             "Largest available mount free space is '"
@@ -227,7 +237,7 @@ def SetSystemPrefs():
     global captureLabel
 
     #  Set the directory to dump the capture files into...
-    targetPath = mountpointPrefix + "/" + localDir  + "/" + captureLabel
+    targetPath = mountpointPrefix + "/" + localDir + "/" + captureLabel
     targetOutputDirectory = os.path.expandvars(targetPath)
     targetOutputDirectory = os.path.normpath(targetOutputDirectory)
 
@@ -305,12 +315,12 @@ def DisplayTestWarning():
     log("*******************************")
     log("*******************************")
     log("   ")
+    log("   ")
     log("You are executing this script in test mode!")
-    log(
-        "It will not record more than >>"
-        + str(testClipMax)
-        + "<< clips before quitting!!!"
-    )
+    log("                             ------\\/------")
+    log("It will not record more than -->>  {}  <<-- clips before quitting!!!".format(str(testClipMax)))
+    log("                             ----^^^^^^----   ")
+    log("   ")
     log("   ")
     log("*******************************")
     log("*******************************")
@@ -380,6 +390,82 @@ def CaptureViaCmdLine(filePath):
         ReportCmdHiccup(exceptionObj=err)
 
 
+def CompressFile(inputPath, outputPath, compressCmd):
+    try:
+        #  Here's where the actual command line gets executed...
+        cmdResults = subprocess.run(
+            compressCmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=cmdCallTimeout,
+        )
+
+        inputSize = os.path.getsize(inputPath)
+        outputSize = os.path.getsize(outputPath)
+
+        percentDiff = ((outputSize - inputSize) / inputSize) * 100
+        percentDiff = abs(round(percentDiff))
+
+        if inputSize > outputSize:
+            log("Saving {}% file space on '{}'...".format(percentDiff, outputPath))
+            os.remove(inputPath)
+        else:
+            log("No compression savings for '{}'!".format(inputPath))
+            log("Bloated {}% file space on '{}'...".format(percentDiff, outputPath))
+            log("{} vs {}".format(inputSize, outputSize))
+            os.remove(outputPath)
+        if cmdResults.returncode != 0:
+            ReportCmdHiccup(commandResults=cmdResults)
+    except Exception as err:
+        ReportCmdHiccup(exceptionObj=err)
+
+
+def SpaceSaver(filePath):
+    global captureLabel
+
+    #  Settings some variables...
+    inputPath = filePath
+    outputPath = filePath
+    compressCmd = ""
+
+    #  What the command will look like if it's for Video...
+    if captureLabel == "Video":
+        outputPath = "{}.mkv".format(outputPath)
+        #  We're going to hard code it for the libx264 codec using the "ultrafast" method.
+        #  Hoping for roughly a 30% savings here, but it could very well vary depending
+        #  on the footage.  Don't really have any idea yet, so...
+        compressCmd = (
+            "sudo ionice -c 1 -n 0 ffmpeg -i {} -c:v libx264 -preset ultrafast -crf 22 -c:a copy {}".format(
+                inputPath, outputPath
+            )
+        )
+    #  What the command will look like if it's for Audio...
+    elif captureLabel == "Audio":
+        outputPath = "{}.flac".format(outputPath)
+        #  We're going to hard code it for the FLAC codec, since it's completely
+        #  losseless and faster than snot off a goose, even on the Aquaspud!
+        #  I suspect the audio compression will be a lot more predictable, and we're
+        #  looking at probably an 80-90% file size savings...
+        compressCmd = "ffmpeg -i {} -c:a flac {}".format(inputPath, outputPath)
+    #  Okay, here we're actually going to spawn ain't-gonna-wait-for-the-train process...
+    process = (
+        multiprocessing.Process(
+            target=CompressFile, args=(inputPath, outputPath, compressCmd)
+        )
+    )
+    process.start()
+
+    #  Returning the pid in case we need to track a runaway later...
+    return process.pid
+
+
+def CheckForStopCapture():
+    global stopFile
+    return os.path.exists(stopFile)
+
+
 ####################################
 #
 #  THE MAIN EVENT, KIDDIES!
@@ -417,6 +503,8 @@ while keepRecording:
 
     try:
         CaptureViaCmdLine(filePath)
+        pid = SpaceSaver(filePath)
+        log("Spawned 'SpaceSaver' on pid {}...".format(pid))
     finally:
         #  Check for IS_TEST_MODE again...
         if IS_TEST_MODE:
@@ -426,3 +514,11 @@ while keepRecording:
         #  We also need a way to break out
         #  if a RESTish stop call is made...
         # time.sleep(2)
+        if CheckForStopCapture() is True:
+            log("Found a 'capture.stop' flag file!")
+            log("Stopping all recording now!")
+            log("   ")
+            log("   ")
+            log("==============================================================================")
+            log("====  THE CAPTURE.STOP WILL BE DELETED UPON THE NEXT CAPTURE START!  =========")
+            log("==============================================================================")
