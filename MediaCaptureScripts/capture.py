@@ -156,6 +156,7 @@ if captureLabel == "Audio":
     preferLargestAvailableMount = configObject.PreferLargestAvailableMount
     ffmpegInputFormat = configObject.FFmpegInputFormat
     outputExtension = configObject.OutputExtension
+    skipPostCompression = configObject.SkipPostCompression
 
 elif captureLabel == "Video":
     preferredRecorder = configObject.PreferredRecorder  # "ffmpeg"
@@ -167,6 +168,7 @@ elif captureLabel == "Video":
     preferLargestAvailableMount = configObject.PreferLargestAvailableMount  # True
     ffmpegInputFormat = configObject.FFmpegInputFormat  # " -input_format mjpeg"
     outputExtension = configObject.OutputExtension  # Determines the output file type
+    skipPostCompression = configObject.SkipPostCompression
 
 #  --->>> *The IS_TEST_MODE variable should *NORMALLY* be set to False...*
 IS_TEST_MODE = configObject.IsTestMode
@@ -503,8 +505,11 @@ while keepRecording:
 
     try:
         CaptureViaCmdLine(filePath)
-        pid = SpaceSaver(filePath)
-        log("Spawned 'SpaceSaver' on pid {}...".format(pid))
+        if not skipPostCompression:
+            pid = SpaceSaver(filePath)
+            log("Spawned 'SpaceSaver' on pid {}...".format(pid))
+        else:
+            log("Skip Post Compression set to 'TRUE'!!!!");
     finally:
         #  Check for IS_TEST_MODE again...
         if IS_TEST_MODE:

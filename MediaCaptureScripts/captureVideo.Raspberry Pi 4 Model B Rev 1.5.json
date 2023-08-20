@@ -1,0 +1,12 @@
+{
+  "PreferredRecorder": "ffmpeg",
+  "ScreenWidth": 640,
+  "ScreenHeight": 480,
+  "DevicePath": "/dev/video0",
+  "RecordingPath": "$HOME/Videos",
+  "RecordingClipLengthInMinutes": 5,
+  "PreferLargestAvailableMount": true,
+  "FFmpegInputFormat": " -input_format mjpeg",
+  "IsTestMode": false,
+  "OutputExtension": "mjpg"
+}

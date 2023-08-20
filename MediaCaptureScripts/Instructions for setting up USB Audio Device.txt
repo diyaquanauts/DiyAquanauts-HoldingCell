@@ -1,0 +1,48 @@
+https://learn.adafruit.com/usb-audio-cards-with-a-raspberry-pi/updating-alsa-config
+
+
+Updating ALSA Config
+ 
+Raspbian Bullseye - Updating alsa options
+First make sure you can see the alsa card for the USB audio device with
+
+cat /proc/asound/cards
+
+And look for something that says "USB Audio" or similar
+
+Depending on whether you are running a Pi 4 or other, it may be device 1, 2 or 3.
+
+learn_raspberry_pi_image.png
+we used to recommend manually setting the device number to be your USB audio card but that turned out to be fragile because the HDMI audio device numbers would change. 
+
+So now we suggest just disabling the built in headphone jack audio, and letting the USB audio card be 'first'
+
+Start by disabling the built-in headphone jack with
+
+sudo nano /etc/modprobe.d/raspi-blacklist.conf
+
+and typing in 
+
+blacklist snd_bcm2835
+
+hit return, then save with Control-X then Y then Return (to save)
+
+ 
+
+learn_raspberry_pi_image.png
+Then enable the USB audio card with
+
+sudo nano /lib/modprobe.d/aliases.conf
+
+find the line with
+
+options snd-usb-audio index=-2
+
+and put a # in the beginning of that line. Then exit and save file.
+
+learn_raspberry_pi_image.png
+Then sudo reboot to 'set' the changes
+
+Upon reboot, if you run sudo aplay -l  to list the interface, the USB audio card will be first and the default!
+
+learn_raspberry_pi_image.png
