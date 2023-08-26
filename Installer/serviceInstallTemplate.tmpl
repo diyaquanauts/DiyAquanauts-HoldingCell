@@ -1,0 +1,6 @@
+sudo touch /etc/systemd/system/capture$SERVICE_NAME$.service
+sudo chmod 664 /etc/systemd/system/capture$SERVICE_NAME$.service
+sudo cp ./systemdUnitFiles/capture$SERVICE_NAME$.service /etc/systemd/system/capture$SERVICE_NAME$.service
+sudo systemctl daemon-reload
+sudo systemctl enable capture$SERVICE_NAME$.service
+sudo systemctl daemon-reload
