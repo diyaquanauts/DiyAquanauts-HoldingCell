@@ -235,6 +235,6 @@ if __name__ == "__main__":
     installMaster.installCaptureScripts()
     installMaster.setupAudioConfigFiles()
     installMaster.setupVideoConfigFiles()
-    installMaster.setSudoPrivileges()
+    # installMaster.setSudoPrivileges()
     installMaster.installSystemdServices()
     installMaster.reboot()
