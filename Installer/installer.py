@@ -2,7 +2,7 @@ import subprocess
 
 
 def _reportOut(msg):
-    print("~ " * 20)
+    print("~ " * 30)
     print(msg)
 
 
@@ -20,6 +20,12 @@ def _installPackage(cmd, packageName):
 def aptUpdate():
     cmdArgs = "sudo apt-get update"
     _installPackage(cmdArgs, "system update")
+
+
+
+def aptUpgrade():
+    cmdArgs = "sudo apt-get upgrade"
+    _installPackage(cmdArgs, "system upgrade")
 
 
 def installPackage(packageName):
@@ -60,7 +66,7 @@ def execRawCmd(cmd):
     output = []
 
     try:
-        print(f"  ---> Executing: '{cmd}")
+        print(f"  ---> Executing: '{cmd}'")
 
         result = subprocess.run(
             cmd,

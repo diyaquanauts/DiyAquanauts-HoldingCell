@@ -5,6 +5,7 @@ from audioInput import audioInput
 import fileCopy
 import getpass
 import getVideoInputs
+from HostnameChanger import HostnameChanger
 import installer
 import inspect
 import jsonUpdater
@@ -15,6 +16,7 @@ import sys
 import sysInfoEx
 import time
 from userChooser import userChooser
+from WorkflowSelector import WorkflowSelector
 
 ###############
 #   GLOBALS   #
@@ -94,20 +96,42 @@ class MasterInstaller:
     def installDependencies(self):
         self.stringBox(self.methodName())
         installer.aptUpdate()
-        installer.installPackage("cockpit")
         installer.installPackage("ffmpeg")
         installer.installPackage("python3-pip")
+
+
+    def installOptionals(self):
+        self.stringBox(self.methodName())
+        installer.aptUpdate()
+
+        if (input("   --- Full system upgrade? [Y/n]: ") == "Y"):
+            installer.aptUpgrade()
+
+        if (input("   --- Install Cockpit system managment software? [Y/n]: ") == "Y"):
+            installer.installPackage("cockpit")
+
+        if (input("   --- Install RaspAP wi-fi access point software? [Y/n]: ") == "Y"):
+                installer.execRawCmd("curl -sL https://install.raspap.com | bash -s -- --assume-yes")
+
+        if (input("   --- Install Tailscale virtual networking? [Y/n]: ") == "Y"):
+            installer.execRawCmd("curl -fsSL https://tailscale.com/install.sh | sh")
 
 
     def installPythonPackages(self):
         self.stringBox(self.methodName())
         installer.installPipPackages("shortuuid")
         installer.installPipPackages("psutil")
+        installer.installPipPackages("flask")
 
 
     def installCaptureScripts(self):
         self.stringBox(self.methodName())
         fileCopy.copyFiles("./captureScripts", "/home/diyaqua")
+
+
+    def setHostname(self):
+        changer = HostnameChanger()
+        changer.userQueryHostnameChange()
 
 
     def setupAudioConfigFiles(self):
@@ -218,7 +242,7 @@ class MasterInstaller:
         print()
         self.stringBox("  **  Buoy Installation Complete!!  **  ")
 
-        reboot = input("Install script successful. Reboot? (Y/n): ")
+        reboot = input("Install script successful. Reboot? [Y/n]: ")
 
         if reboot == "Y":
             installer.execRawCmd("sudo reboot")
@@ -229,12 +253,33 @@ class MasterInstaller:
 
 if __name__ == "__main__":
     installMaster = MasterInstaller()
+
     installMaster.displayWelcome("buoy-ascii.art", 50)
-    installMaster.installDependencies()
-    installMaster.installPythonPackages()
-    installMaster.installCaptureScripts()
-    installMaster.setupAudioConfigFiles()
-    installMaster.setupVideoConfigFiles()
-    # installMaster.setSudoPrivileges()
-    installMaster.installSystemdServices()
-    installMaster.reboot()
+
+    workflow = [
+        [True, "Install the required dependencies for the Buoy System", "installMaster.installDependencies()"],
+        [True, "Install required Python libraries for the Buoy System", "installMaster.installPythonPackages()"],
+        [False, "Install optional applications (useful but not required)", "installMaster.installOptionals()"],
+        [True, "Install video, audio, and sensor capture scripts", "installMaster.installCaptureScripts()"],
+        [True, "Configure the Audio settings based on current hardware", "installMaster.setupAudioConfigFiles()"],
+        [True, "Configure the Video settings based on current hardware", "installMaster.setupVideoConfigFiles()"],
+        [True, "Install the auto-start services for capture script", "installMaster.installSystemdServices()"],
+        [True, "Set the Hostname of the machine", "installMaster.setHostname()"],
+        [True, "Reboot to complete all changes", "installMaster.reboot()"]
+        ]
+
+    selector = WorkflowSelector(workflow)
+
+    workflow = selector.selectWorkflow("If you have not run the installer script before, it is\n\n    ***>  HIGHLY RECOMMENDED  <***\n\nthat you leave all the values above at their defaults...")
+
+    for step in workflow:
+        if (step[0] == True):
+            code = step[2]
+            try:
+                exec(code)
+            except Exception as e:
+                print("Uh-oh!  Please contact Buoy Support with the following information!\n\n" + code, e)
+                break
+
+
+

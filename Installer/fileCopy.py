@@ -8,9 +8,10 @@ def copyFiles(sourceDir, targetDir):
     try:
         for filename in os.listdir(sourceDir):
             sourceFile = os.path.join(sourceDir, filename)
-            print(f"Copying '{sourceFile}' to '{targetDir}'...")
-            if os.path.isfile(sourceDir):
-                shutil.copy(source_file, targetDir)
+            targetFile = os.path.join(targetDir, filename)
+            #if os.path.isfile(sourceDir) == False:
+            print(f"Copying '{sourceFile}' to '{targetFile}'...")
+            shutil.copy(sourceFile, targetFile)
 
         print("File copy complete.")
     except Exception as e:
