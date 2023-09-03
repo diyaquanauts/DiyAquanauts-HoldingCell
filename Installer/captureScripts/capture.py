@@ -368,6 +368,57 @@ def ReportCmdHiccup(commandResults=None, exceptionObj=None):
 
 
 ################################################################
+#  Moves a given file from its directory to a subdirectory
+#  internal to the directory...
+def moveToSubDir(filename, subdirectory):
+    # Check if the subdirectory exists, create it if not
+    if not os.path.exists(subdirectory):
+        os.makedirs(subdirectory)
+
+    # Get the current directory of the script
+    currentDir = os.getcwd()
+
+    # Construct the full source and destination paths
+    sourcePath = os.path.join(currentDir, filename)
+    targetPath = os.path.join(currentDir, subdirectory, filename)
+
+    try:
+        # Move the file to the subdirectory
+        shutil.move(sourcePath, targetPath)
+        print(f"File '{filename}' moved to '{subdirectory}' successfully.")
+    except Exception as e:
+        print("An error occurred:", e)
+
+################################################################
+#  Captures a single frame for in situ camera checks...
+def TakeSnapshot(filePath):
+    #  Construct the image file name...
+    imageFileName = f"{filePath}.jpg"
+    #  Construct the clip recording command line...
+    fullCmd = f"ffmpeg -f v4l2 -input_format mjpeg -i {devicePath} -frames:v 1 {imageFileName}"
+    log("   ")
+    log(fullCmd)
+    log("   ")
+
+    try:
+        #  Here's where the actual command line gets executed...
+        cmdResults = subprocess.run(
+            fullCmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=cmdCallTimeout,
+        )
+        if cmdResults.returncode != 0:
+            ReportCmdHiccup(commandResults=cmdResults)
+        else:
+            moveToSubDir(imageFileName, "Snapshots")
+    except Exception as err:
+        ReportCmdHiccup(exceptionObj=err)
+
+
+################################################################
 #  Captures clips via the preferred command line method...
 def CaptureViaCmdLine(filePath):
     #  Construct the clip recording command line...
@@ -504,6 +555,8 @@ while keepRecording:
     clipCount = clipCount + 1
 
     try:
+        if (captureLabel == "Video"):
+            TakeSnapshot(filePath)
         CaptureViaCmdLine(filePath)
         if not skipPostCompression:
             pid = SpaceSaver(filePath)

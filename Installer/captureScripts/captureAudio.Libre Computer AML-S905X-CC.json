@@ -1,10 +1,11 @@
 {
-  "PreferredRecorder": "arecord",
-  "RecordingQuality": "cd",
-  "DevicePath": "plughw:1,0",
-  "RecordingClipLengthInMinutes": 5,
-  "PreferLargestAvailableMount": true,
-  "FFmpegInputFormat": " -input_format mjpeg",
-  "IsTestMode": true,
-  "OutputExtension": "wav"
+    "PreferredRecorder": "arecord",
+    "RecordingQuality": "cd",
+    "DevicePath": "plughw:1,0",
+    "RecordingClipLengthInMinutes": 5,
+    "PreferLargestAvailableMount": true,
+    "FFmpegInputFormat": " -input_format mjpeg",
+    "IsTestMode": true,
+    "OutputExtension": "wav",
+    "SkipPostCompression": false
 }
