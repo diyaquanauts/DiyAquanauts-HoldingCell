@@ -1,25 +1,18 @@
 #!/usr/bin/python3
+from datetime import datetime
+import json
+import logging
 import multiprocessing
 import os
+from pathlib import Path
+import psutil
+import shortuuid
+import shutil
 import subprocess
 import sys
-from pathlib import Path
-
-# !pip install shortuuid
-import shortuuid
-
-# !pip install psutil
-import psutil
-
-# import time
-
-import json
 from types import SimpleNamespace
-
 # from libcamera import controls
-from datetime import datetime
 
-import logging
 
 #########################################################
 #  PREPARE SOME LOGGING AND OTHER REQUIRE VARIABLES...
