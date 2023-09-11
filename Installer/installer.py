@@ -18,14 +18,27 @@ def _installPackage(cmd, packageName):
 
 
 def aptUpdate():
-    cmdArgs = "sudo apt-get update"
+    cmdArgs = "sudo apt update"
     _installPackage(cmdArgs, "system update")
 
 
+def aptAutoRemove():
+    cmdArgs = "sudo apt clean"
+    _installPackage(cmdArgs, "system clean")
+
+    cmdArgs = "sudo apt autoremove"
+    _installPackage(cmdArgs, "system autoremove")
+
 
 def aptUpgrade():
-    cmdArgs = "sudo apt-get upgrade"
-    _installPackage(cmdArgs, "system upgrade")
+    cmdArgs = "sudo apt full-upgrade"
+    _installPackage(cmdArgs, "system full upgrade")
+
+
+def aptFullMaintainence():
+    aptUpdate()
+    aptUpgrade()
+    aptAutoRemove()
 
 
 def installPackage(packageName):
@@ -34,7 +47,8 @@ def installPackage(packageName):
 
 
 def installPipPackages(pipPackage):
-    cmdArgs = f"sudo pip3 install {pipPackage}"
+    cmdArgs = f"sudo apt install python3-{pipPackage}"
+    # cmdArgs = f"sudo pip3 install {pipPackage}"
     _installPackage(cmdArgs, pipPackage)
 
 

@@ -11,8 +11,6 @@ import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
-# from libcamera import controls
-
 
 #########################################################
 #  PREPARE SOME LOGGING AND OTHER REQUIRE VARIABLES...
@@ -55,6 +53,7 @@ def log(msg):
     logger.debug(msg)
     print(msg)
 
+
 ########################################################
 #  Get the logger set and append the opening message...
 logger = prepareLogger()
@@ -71,9 +70,9 @@ if os.path.exists(stopFile):
 ######################################################
 #  LOAD CONFIG DATA...
 #
-log("*****************************************************")
-log("***       AUDIO/VIDEO CAPTURE CONFIGURATION       ***")
-log("*****************************************************")
+log("**********************************************")
+log("***       DATA CAPTURE CONFIGURATION       ***")
+log("**********************************************")
 log("   ")
 
 log("Current directory: " + os.getcwd())
@@ -107,6 +106,8 @@ if sys.argv[1] == "-a":
     captureLabel = "Audio"
 elif sys.argv[1] == "-v":
     captureLabel = "Video"
+elif sys.argv[1] == "-vm":
+    captureLabel = "Voltage"
 
 log("   ")
 log("                   =====")
@@ -161,6 +162,15 @@ elif captureLabel == "Video":
     preferLargestAvailableMount = configObject.PreferLargestAvailableMount  # True
     ffmpegInputFormat = configObject.FFmpegInputFormat  # " -input_format mjpeg"
     outputExtension = configObject.OutputExtension  # Determines the output file type
+    skipPostCompression = configObject.SkipPostCompression
+
+elif captureLabel == "Voltage":
+    preferredRecorder = configObject.PreferredRecorder
+    devicePath = configObject.DevicePath
+    recordingPath = configObject.RecordingPath
+    recordingClipLengthInMinutes = configObject.RecordingClipLengthInMinutes
+    preferLargestAvailableMount = configObject.PreferLargestAvailableMount
+    outputExtension = configObject.OutputExtension
     skipPostCompression = configObject.SkipPostCompression
 
 #  --->>> *The IS_TEST_MODE variable should *NORMALLY* be set to False...*
@@ -288,17 +298,17 @@ def SetSystemPrefs():
             )
         elif preferredRecorder == "ffmpeg":
             captureCmd = (
-                "ffmpeg -f v4l2"
-                + ffmpegInputFormat
-                + " -video_size "
-                + str(screenWidth)
-                + "x"
-                + str(screenHeight)
-                + " -i "
-                + devicePath
-                + " -c copy -t "
-                + str(recordingClipInSeconds)
+                f"ffmpeg -f v4l2 {ffmpegInputFormat} "
+                + f"-video_size {screenWidth}x{screenHeight} "
+                + f"-i {devicePath} "
+                + f"-c copy -t {recordingClipInSeconds}"
             )
+    elif captureLabel == "Voltage":
+        captureCmd = (
+            f"{preferredRecorder} {devicePath} "
+            + f"-t {recordingClipInSeconds * 1000} "
+            + f"-o "
+        )
 
 
 ###############################################################################
@@ -313,7 +323,11 @@ def DisplayTestWarning():
     log("   ")
     log("You are executing this script in test mode!")
     log("                             ------\\/------")
-    log("It will not record more than -->>  {}  <<-- clips before quitting!!!".format(str(testClipMax)))
+    log(
+        "It will not record more than -->>  {}  <<-- clips before quitting!!!".format(
+            str(testClipMax)
+        )
+    )
     log("                             ----^^^^^^----   ")
     log("   ")
     log("   ")
@@ -382,13 +396,14 @@ def moveToSubDir(filename, subdirectory):
     except Exception as e:
         print("An error occurred:", e)
 
+
 ################################################################
 #  Captures a single frame for in situ camera checks...
 def TakeSnapshot(filePath):
     #  Construct the image file name...
-    imageFileName = f"{filePath}.jpg"
+    imageFileName = f"{filePath}.png"
     #  Construct the clip recording command line...
-    fullCmd = f"ffmpeg -f v4l2 -input_format mjpeg -i {devicePath} -frames:v 1 {imageFileName}"
+    fullCmd = f"ffmpeg -f v4l2 -i {devicePath} -frames:v 1 {imageFileName}"
     log("   ")
     log(fullCmd)
     log("   ")
@@ -479,13 +494,13 @@ def SpaceSaver(filePath):
     #  What the command will look like if it's for Video...
     if captureLabel == "Video":
         outputPath = "{}.mkv".format(outputPath)
-        #  We're going to hard code it for the libx264 codec using the "ultrafast" method.
+        #  We're going to hard code it for the libx264
+        # codec using the "ultrafast" method.
         #  Hoping for roughly a 30% savings here, but it could very well vary depending
         #  on the footage.  Don't really have any idea yet, so...
         compressCmd = (
-            "sudo ionice -c 1 -n 0 ffmpeg -i {} -c:v libx264 -preset ultrafast -crf 22 -c:a copy {}".format(
-                inputPath, outputPath
-            )
+            f"sudo ionice -c 1 -n 0 ffmpeg -i {inputPath} "
+            + f"-c:v libx264 -preset ultrafast -crf 22 -c:a copy {outputPath}"
         )
     #  What the command will look like if it's for Audio...
     elif captureLabel == "Audio":
@@ -495,11 +510,10 @@ def SpaceSaver(filePath):
         #  I suspect the audio compression will be a lot more predictable, and we're
         #  looking at probably an 80-90% file size savings...
         compressCmd = "ffmpeg -i {} -c:a flac {}".format(inputPath, outputPath)
-    #  Okay, here we're actually going to spawn ain't-gonna-wait-for-the-train process...
-    process = (
-        multiprocessing.Process(
-            target=CompressFile, args=(inputPath, outputPath, compressCmd)
-        )
+    #  Okay, here we're actually going to spawn
+    #  ain't-gonna-wait-for-the-train process...
+    process = multiprocessing.Process(
+        target=CompressFile, args=(inputPath, outputPath, compressCmd)
     )
     process.start()
 
@@ -548,14 +562,14 @@ while keepRecording:
     clipCount = clipCount + 1
 
     try:
-        if (captureLabel == "Video"):
+        if captureLabel == "Video":
             TakeSnapshot(filePath)
         CaptureViaCmdLine(filePath)
         if not skipPostCompression:
             pid = SpaceSaver(filePath)
             log("Spawned 'SpaceSaver' on pid {}...".format(pid))
         else:
-            log("Skip Post Compression set to 'TRUE'!!!!");
+            log("Skip Post Compression set to 'TRUE'!!!!")
     finally:
         #  Check for IS_TEST_MODE again...
         if IS_TEST_MODE:
@@ -570,6 +584,8 @@ while keepRecording:
             log("Stopping all recording now!")
             log("   ")
             log("   ")
-            log("==============================================================================")
-            log("====  THE CAPTURE.STOP WILL BE DELETED UPON THE NEXT CAPTURE START!  =========")
-            log("==============================================================================")
+            log("-" * 80)
+            log(
+                "======  THE CAPTURE.STOP WILL BE DELETED UPON THE NEXT CAPTURE START!  ======="
+            )
+            log("-" * 80)
