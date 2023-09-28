@@ -48,7 +48,6 @@ bgMAGENTA = 45
 bgCYAN = 46
 bgWHITE = 47
 
-
 class MasterInstaller:
     def __init__(self):
         self.setCwdToInstaller()
@@ -63,11 +62,11 @@ class MasterInstaller:
         marquee = f"{borderChar * 3}  {stringToBox}  {borderChar * 3}"
         borderLine = borderChar * len(marquee)
         box = (
-                f"{paddingSpace}{borderLine}\n"
-                + f"{paddingSpace}{bufferLine}\n"
-                + f"{paddingSpace}{marquee}\n"
-                + f"{paddingSpace}{bufferLine}\n"
-                + f"{paddingSpace}{borderLine}"
+            f"{paddingSpace}{borderLine}\n"
+            + f"{paddingSpace}{bufferLine}\n"
+            + f"{paddingSpace}{marquee}\n"
+            + f"{paddingSpace}{bufferLine}\n"
+            + f"{paddingSpace}{borderLine}"
         )
 
         print("")
@@ -133,9 +132,6 @@ class MasterInstaller:
 
         if input("   --- Install Tailscale virtual networking? [Y/n]: ") == "Y":
             installer.execRawCmd("curl -fsSL https://tailscale.com/install.sh | sh")
-
-        if input("   --- Install NodeJS 16? [Y/n]: ") == "Y":
-            installer.execRawCmd("sudo bash ./InstallNode16.sh")
 
     def installPythonPackages(self):
         self.stringBox(self.methodName())
