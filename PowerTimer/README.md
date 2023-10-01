@@ -18,7 +18,12 @@ Once the alarm is set, you can shutdown:
 ```bash
 sudo shutdown -h now
 ```
-But it would probably be a good idea to verify before shuting down...
+But it would probably be a good idea to verify before shutting down...
+```bash
+diyaqua@pi4:~ $ sudo hwclock -r --show
+2023-09-30 22:28:47.965627-07:00
+```
+
 # configure_rtc.sh 
 A script to install and configure the DS3231 Real Time Clock (RTC) as the Raspberry Pis hardware rtc.
 
