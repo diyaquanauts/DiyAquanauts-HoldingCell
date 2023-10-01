@@ -22,8 +22,8 @@ echo "Updating and upgrading system packages..."
 apt-get update && apt-get upgrade -y
 
 # Add dtoverlay for DS3231 to /boot/config.txt if it's not already there
-if ! grep -q "dtoverlay=i2c-rtc,ds3231" /boot/config.txt; then
-    echo "dtoverlay=i2c-rtc,ds3231" >> /boot/config.txt
+if ! grep -q "dtoverlay=i2c-rtc,ds3231,wakeup-source" /boot/config.txt; then
+    echo "dtoverlay=i2c-rtc,ds3231,wakeup-source" >> /boot/config.txt
     echo "Added DS3231 overlay to /boot/config.txt."
 else
     echo "DS3231 overlay already present in /boot/config.txt."

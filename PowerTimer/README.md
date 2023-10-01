@@ -1,38 +1,24 @@
 # Power Timer
 This folder contains the installation scripts and runtime methods to use the buoys custom power timer PCB.
-# scheduleWakeup.py
 
-This script allows users to set an alarm on a DS3231 RTC module connected to a Raspberry Pi. The alarm can be set to trigger in seconds, minutes, hours, or days.
+Once configured, it will allow you to use raspbian's [hwclock](https://linux.die.net/man/8/hwclock) to schedule wakeup times and clear the wakeup alarm. 
 
-### Requirements
+⚠️ *The alarm must be cleared before scheduling a new wake-up time.* ⚠️
 
-- Python 3.x
-- Libraries:
-  - `board`
-  - `busio`
-  - `adafruit_ds3231`
-
-### Installation
-
-1. Ensure you have Python 3.x installed.
-2. Install required libraries:
+You can clear the alarm like this:
 ```bash
-pip install adafruit-circuitpython-ds3231
+echo "0" | sudo tee /sys/class/rtc/rtc0/wakealarm 
+```
+And you can set the next wakeup time with a date. This will wake it up in 30 minutes:
+```bash
+date '+%s' -d '+ 30 minutes' | sudo tee /sys/class/rtc/rtc0/wakealarm
 ```
 
-### Usage
-Run the script using Python, followed by the mode and value you'd like to set the alarm for. You can also use the --shutdown flag to shutdown the system 1 minute after setting the alarm.
-
+Once the alarm is set, you can shutdown:
 ```bash
-python setAlarm.py [-h] -m {secondly,minutely,hourly,daily} [-v VALUE] [--shutdown]
+sudo shutdown -h now
 ```
-
-This uses adafruit circuit python ds3231:
-https://github.com/adafruit/Adafruit_CircuitPython_DS3231  
-Which relies heavily on:  
-https://github.com/adafruit/Adafruit_CircuitPython_Register
-
-
+But it would probably be a good idea to verify before shuting down...
 # configure_rtc.sh 
 A script to install and configure the DS3231 Real Time Clock (RTC) as the Raspberry Pis hardware rtc.
 
