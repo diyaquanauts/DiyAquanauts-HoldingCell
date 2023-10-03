@@ -63,11 +63,11 @@ class MasterInstaller:
         marquee = f"{borderChar * 3}  {stringToBox}  {borderChar * 3}"
         borderLine = borderChar * len(marquee)
         box = (
-                f"{paddingSpace}{borderLine}\n"
-                + f"{paddingSpace}{bufferLine}\n"
-                + f"{paddingSpace}{marquee}\n"
-                + f"{paddingSpace}{bufferLine}\n"
-                + f"{paddingSpace}{borderLine}"
+            f"{paddingSpace}{borderLine}\n"
+            + f"{paddingSpace}{bufferLine}\n"
+            + f"{paddingSpace}{marquee}\n"
+            + f"{paddingSpace}{bufferLine}\n"
+            + f"{paddingSpace}{borderLine}"
         )
 
         print("")

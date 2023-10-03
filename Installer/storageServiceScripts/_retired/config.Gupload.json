@@ -1,0 +1,5 @@
+{
+    "useApiKey": true,
+    "apiKey": "AIzaSyA5ugpmnMaPQy56_khFpeAD8xgV72hpA6Q",
+    "credentialsPath": "path_to_your_config_file.json"
+}
