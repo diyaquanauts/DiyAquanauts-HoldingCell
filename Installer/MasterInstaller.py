@@ -115,6 +115,7 @@ class MasterInstaller:
         installer.installPackage("v4l-utils")
         installer.installPackage("ffmpeg")
         installer.installPackage("python3-pip")
+        installer.installPackage("uvicorn")
 
     def installOptionals(self):
         self.stringBox(self.methodName())
@@ -142,10 +143,14 @@ class MasterInstaller:
         installer.installPipPackages("shortuuid")
         installer.installPipPackages("psutil")
         installer.installPipPackages("flask")
+        installer.installPipPackages("fastapi")
+        installer.installPipPackages("uvicorn")
 
     def installCaptureScripts(self):
         self.stringBox(self.methodName())
         fileCopy.copyFiles("./captureScripts", "/home/diyaqua")
+        installer.execRawCmd("mkdir /home/diyaqua/storageService")
+        fileCopy.copyFiles("./storageServiceScripts", "/home/diyaqua/storageService")
 
     def setHostname(self):
         changer = HostnameChanger()
@@ -240,6 +245,11 @@ class MasterInstaller:
         installer.execRawFromTemplate(
             "serviceInstallTemplate.tmpl",
             {"$SERVICE_NAME$": "Voltage"},
+            exitOnFailure=False,
+        )
+        installer.execRawFromTemplate(
+            "serviceInstallTemplate.tmpl",
+            {"$SERVICE_NAME$": "StorageService"},
             exitOnFailure=False,
         )
 

@@ -101,11 +101,13 @@ class FileActionsStorage:
             sql += "action LIKE ?"
             if i < len(criteriaList) - 1:
                 sql += " OR "
+
         if recordCountLimit > 0:
             # Complete the query
             sql += f")  LIMIT {recordCountLimit};"
         else:
             sql += ");"
+
         # print(sql)
 
         sqlParams = (contentType, len(criteriaList), *criteriaList)
@@ -120,49 +122,8 @@ class FileActionsStorage:
 
         for storageId, action in result:
             retVal.append(storageId)
-        return retVal
-
-    def getByStorageIdValueFromJson(self, jsonObject):
-        retVal = self.getByStorageIdValue(jsonObject["storageId"])
 
         return retVal
-
-    def getByStorageIdValue(self, value):
-        self.conn = sqlite3.connect(self.dbName)
-        cursor = self.conn.cursor()
-
-        cursor.execute(
-            """
-            SELECT *
-            FROM fileActions
-            WHERE storageId = ?
-            """,
-            (value,),
-        )
-
-        # Get column names
-        columns = [description[0] for description in cursor.description]
-        rows = cursor.fetchall()
-
-        result = []
-
-        for row in rows:
-            rowData = {}
-            for i, columnName in enumerate(columns):
-                if "json" in columnName:
-                    rowData[columnName] = json.loads(row[i])
-                else:
-                    rowData[columnName] = row[i]
-            result.append(rowData)
-
-        cursor.close()
-
-        # Create a JSON object with the table name and rows
-        jsonObject = {
-            "tableName": result
-        }
-
-        return jsonObject
 
     def purgeByStorageId(self, storageId):
         self.conn = sqlite3.connect(self.dbName)
@@ -212,3 +173,11 @@ if __name__ == "__main__":
             db.addFileActionFromJson(payload)
         if i % 100 == 0:
             print(f"Record count: {i}")
+
+    results = db.getIncompleteRecordSets(["store", "ioa"], "video")
+
+    i = 1
+
+    for record in results:
+        print(i, record)
+        i += 1

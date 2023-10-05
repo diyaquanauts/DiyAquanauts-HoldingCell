@@ -45,13 +45,14 @@ class StorageService:
 
     def _validateJson(self, itemJson: dict):
         if not JsonValidator.isValidJson(json.dumps(itemJson)):
-            httpEx = HTTPException(status_code=400, detail="Invalid JSON structure")
+            httpEx = Exception(status_code=400, detail="Invalid JSON structure")
             self.Debug.log(httpEx, forceLog=True)
             raise httpEx
 
     def storeItem(self, itemJson: dict):
         try:
             # Validate JSON integrity
+            print(itemJson)
             self._validateJson(itemJson)
             retVal = self.FileActionsStorage.addFileActionFromJson(itemJson)
         except Exception as e:
@@ -63,6 +64,11 @@ class StorageService:
         retVal = self.FileActionsStorage.getIncompleteRecordSetsFromJson(itemJson)
 
         return {"availableRecords": retVal}
+
+    def getFileActionsByStorageId(self, itemJson: dict):
+        retVal = self.FileActionsStorage.getByStorageIdValueFromJson(itemJson)
+
+        return retVal
 
 if __name__ == "__main__":
     from MinuteCodes import MinuteCodes

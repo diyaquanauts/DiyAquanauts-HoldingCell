@@ -46,8 +46,8 @@ if __name__ == "__main__":
 
     #  Prep some variables for use...
     httpVerb = "POST"
-    storeUrl = "http://127.0.0.1:8000/store"
-    queryUrl = "http://127.0.0.1:8000/requestForProcess"
+    storeUrl = "http://127.0.0.1:5000/store"
+    queryUrl = "http://127.0.0.1:5000/requestForProcess"
     minCodes = MinuteCodes.getCurrentBlockOfCodes()
 
     #  Create a payload to send and append...
