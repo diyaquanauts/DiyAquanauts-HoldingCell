@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=idle
-ExecStart=/usr/bin/uvicorn storageServiceFastWrapper:app
+ExecStart=/usr/bin/python /home/diyaqua/storageServiceFastWrapper.py
 
 [Install]
 WantedBy=multi-user.target
