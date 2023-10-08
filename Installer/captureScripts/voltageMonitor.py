@@ -9,10 +9,14 @@ from ina219 import INA219
 SHUNT_OHMS = 0.15
 MAX_EXPECTED_AMPS = 1.0
 
+def configure(address):
+    ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=address, log_level=logging.INFO)
+    ina.configure(ina.RANGE_16V, ina.GAIN_AUTO)
+    return ina
+
 def read(address, output_file, monitor_label):
     try:
-        ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=address, log_level=logging.INFO)
-        ina.configure(ina.RANGE_16V, ina.GAIN_AUTO)
+        ina = configure(address)
 
         with open(output_file, 'a') as file:
             sys.stdout = file  # Redirect stdout to the file
@@ -27,6 +31,15 @@ def read(address, output_file, monitor_label):
     except Exception as e:
         print(f"An exception occurred: {str(e)}")
         sys.exit(1)  # Exit with a non-zero error code
+
+def useReadInputPower(address):
+    try:
+        ina = configure(address)
+        return ina
+    except Exception as e:
+        print(f"An exception occurred: {str(e)}")
+        sys.exit(1)  # Exit with a non-zero error code
+
 
 def main():
     parser = argparse.ArgumentParser(description="Monitor INA219 sensors")
