@@ -116,7 +116,8 @@ log("                   =====")
 log("   ")
 
 #  Concat the JSON config file name...
-configFileName = "capture" + captureLabel + "." + modelName + ".json"
+# configFileName = "capture" + captureLabel + "." + modelName + ".json"
+configFileName = f"capture{captureLabel}.json"
 
 if os.path.isfile(configFileName) is not True:
     log("Unable to find JSON configuration file!")

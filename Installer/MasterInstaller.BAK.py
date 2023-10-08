@@ -115,6 +115,7 @@ class MasterInstaller:
         installer.installPackage("v4l-utils")
         installer.installPackage("ffmpeg")
         installer.installPackage("python3-pip")
+        installer.installPackage("uvicorn")
 
     def installOptionals(self):
         self.stringBox(self.methodName())
@@ -141,14 +142,15 @@ class MasterInstaller:
         self.stringBox(self.methodName())
         installer.installPipPackages("shortuuid")
         installer.installPipPackages("psutil")
-        installer.installPipPackages("requests")
         installer.installPipPackages("flask")
-        # installer.installPipPackages("fastapi")
-        # installer.installPipPackages("uvicorn")
+        installer.installPipPackages("fastapi")
+        installer.installPipPackages("uvicorn")
 
     def installCaptureScripts(self):
         self.stringBox(self.methodName())
         fileCopy.copyFiles("./captureScripts", "/home/diyaqua")
+        installer.execRawCmd("mkdir /home/diyaqua/storageService")
+        fileCopy.copyFiles("./storageServiceScripts", "/home/diyaqua/storageService")
 
     def setHostname(self):
         changer = HostnameChanger()
@@ -169,14 +171,8 @@ class MasterInstaller:
         global sysModel
 
         print("Updating audio hardware settting in capture config file...")
-        '''
         jsonUpdater.updateJson(
             f"/home/diyaqua/captureAudio.{sysModel}.json",
-            {"DevicePath": audioHardwareSetting},
-        )
-        '''
-        jsonUpdater.updateJson(
-            f"/home/diyaqua/captureAudio.json",
             {"DevicePath": audioHardwareSetting},
         )
 
@@ -213,7 +209,6 @@ class MasterInstaller:
 
         print("Updating audio hardware settting in capture config file...")
 
-        '''
         jsonUpdater.updateJson(
             f"/home/diyaqua/captureVideo.{sysModel}.json",
             {"DevicePath": videoDeviceArray[1]},
@@ -226,21 +221,6 @@ class MasterInstaller:
 
         jsonUpdater.updateJson(
             f"/home/diyaqua/captureVideo.{sysModel}.json",
-            {"FFmpegInputFormat": f" -input_format {videoDeviceArray[2].lower()}"},
-        )
-        '''
-        jsonUpdater.updateJson(
-            f"/home/diyaqua/captureVideo.json",
-            {"DevicePath": videoDeviceArray[1]},
-        )
-
-        jsonUpdater.updateJson(
-            f"/home/diyaqua/captureVideo.json",
-            {"OutputExtension": videoDeviceArray[2].lower()},
-        )
-
-        jsonUpdater.updateJson(
-            f"/home/diyaqua/captureVideo.json",
             {"FFmpegInputFormat": f" -input_format {videoDeviceArray[2].lower()}"},
         )
 
@@ -265,6 +245,11 @@ class MasterInstaller:
         installer.execRawFromTemplate(
             "serviceInstallTemplate.tmpl",
             {"$SERVICE_NAME$": "Voltage"},
+            exitOnFailure=False,
+        )
+        installer.execRawFromTemplate(
+            "serviceInstallTemplate.tmpl",
+            {"$SERVICE_NAME$": "StorageService"},
             exitOnFailure=False,
         )
 

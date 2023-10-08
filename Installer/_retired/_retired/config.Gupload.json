@@ -1,0 +1,5 @@
+{
+    "useApiKey": true,
+    "apiKey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "credentialsPath": "path_to_your_config_file.json"
+}

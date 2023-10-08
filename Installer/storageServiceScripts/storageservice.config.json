@@ -1,2 +1,4 @@
 {
+    "DebugOn": true,
+    "FileActionDatabasePath": "storage.db"
 }
