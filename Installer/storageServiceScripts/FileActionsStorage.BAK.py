@@ -1,17 +1,14 @@
 from DateTimeConverter import DateTimeConverter
 import json
-import os
-
 import sqlite3
 import time
 
 
 class FileActionsStorage:
-    def __init__(self, dbName, journalDirectory="journals"):
+    def __init__(self, dbName):
         self.dbName = dbName
         self.conn = sqlite3.connect(self.dbName)
         self.createTable()
-        self.journalDirectory = journalDirectory
 
     def createTable(self):
         cursor = self.conn.cursor()
@@ -31,34 +28,17 @@ class FileActionsStorage:
         self.conn.commit()
         cursor.close()
 
-    def saveJournalFile(self, fileName, jsonObject):
-        currentDir = os.path.dirname(os.path.abspath(__file__))
-        subDir = os.path.join(currentDir, self.journalDirectory)
-
-        if not os.path.exists(subDir):
-            os.makedirs(subDir)
-        filePath = os.path.join(subDir, fileName)
-
-        with open(filePath, "w") as jsonFile:
-            json.dump(jsonObject, jsonFile, indent=4)
-
     def addFileActionFromJson(self, jsonObject):
         time.sleep(0.001)
         timeStamp = time.time_ns()
         # DateTimeConverter.getBase26TimeStamp()
-
-        journalFileName = f'{jsonObject["storageId"]}.{timeStamp}.json'
-
-        jsonObject["timeStamp"] = timeStamp
-
-        self.saveJournalFile(journalFileName, jsonObject)
 
         self.addFileAction(
             jsonObject["storageId"],
             jsonObject["filePath"],
             jsonObject["action"],
             jsonObject["result"],
-            jsonObject["timeStamp"],
+            timeStamp,
             jsonObject["contentType"],
             json.dumps(jsonObject, indent=4),
         )
@@ -121,11 +101,13 @@ class FileActionsStorage:
             sql += "action LIKE ?"
             if i < len(criteriaList) - 1:
                 sql += " OR "
+
         if recordCountLimit > 0:
             # Complete the query
             sql += f")  LIMIT {recordCountLimit};"
         else:
             sql += ");"
+
         # print(sql)
 
         sqlParams = (contentType, len(criteriaList), *criteriaList)
@@ -140,47 +122,8 @@ class FileActionsStorage:
 
         for storageId, action in result:
             retVal.append(storageId)
-        return retVal
-
-    def getByStorageIdValueFromJson(self, jsonObject):
-        retVal = self.getByStorageIdValue(jsonObject["storageId"])
 
         return retVal
-
-    def getByStorageIdValue(self, value):
-        self.conn = sqlite3.connect(self.dbName)
-        cursor = self.conn.cursor()
-
-        cursor.execute(
-            """
-            SELECT *
-            FROM fileActions
-            WHERE storageId = ?
-            """,
-            (value,),
-        )
-
-        # Get column names
-        columns = [description[0] for description in cursor.description]
-        rows = cursor.fetchall()
-
-        result = []
-
-        for row in rows:
-            rowData = {}
-            for i, columnName in enumerate(columns):
-                if "json" in columnName:
-                    rowData[columnName] = json.loads(row[i])
-                else:
-                    rowData[columnName] = row[i]
-            result.append(rowData)
-
-        cursor.close()
-
-        # Create a JSON object with the table name and rows
-        jsonObject = {"tableName": result}
-
-        return jsonObject
 
     def purgeByStorageId(self, storageId):
         self.conn = sqlite3.connect(self.dbName)
@@ -230,3 +173,11 @@ if __name__ == "__main__":
             db.addFileActionFromJson(payload)
         if i % 100 == 0:
             print(f"Record count: {i}")
+
+    results = db.getIncompleteRecordSets(["store", "ioa"], "video")
+
+    i = 1
+
+    for record in results:
+        print(i, record)
+        i += 1

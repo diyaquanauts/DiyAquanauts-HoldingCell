@@ -113,6 +113,7 @@ def _shortTest():
     storeApi = FileActionApi("192.168.8.155","5000")
 
     minCodes = MinuteCodes.getCurrentBlockOfCodes()
+    
     storageId = DateTimeConverter.getBase26TimeStamp()
 
     results = storeApi.storeItem(storageId, "stored", "successful", "video", minCodes, "Test file - ignore", "/home/diyaqua/Videos/fake.mp4")
