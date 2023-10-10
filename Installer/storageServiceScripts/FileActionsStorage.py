@@ -1,14 +1,16 @@
 from DateTimeConverter import DateTimeConverter
 import json
+import os
 import sqlite3
 import time
 
 
 class FileActionsStorage:
-    def __init__(self, dbName):
+    def __init__(self, dbName, journalDirectory="journals"):
         self.dbName = dbName
         self.conn = sqlite3.connect(self.dbName)
         self.createTable()
+        self.journalDirectory = journalDirectory
 
     def createTable(self):
         cursor = self.conn.cursor()
@@ -28,17 +30,34 @@ class FileActionsStorage:
         self.conn.commit()
         cursor.close()
 
+    def saveJournalFile(self, fileName, jsonObject):
+        currentDir = os.path.dirname(os.path.abspath(__file__))
+        subDir = os.path.join(currentDir, self.journalDirectory)
+
+        if not os.path.exists(subDir):
+            os.makedirs(subDir)
+        filePath = os.path.join(subDir, fileName)
+
+        with open(filePath, "w") as jsonFile:
+            json.dump(jsonObject, jsonFile, indent=4)
+
     def addFileActionFromJson(self, jsonObject):
         time.sleep(0.001)
         timeStamp = time.time_ns()
         # DateTimeConverter.getBase26TimeStamp()
+
+        journalFileName = f'{jsonObject["storageId"]}.{timeStamp}.json'
+
+        jsonObject["timeStamp"] = timeStamp
+
+        self.saveJournalFile(journalFileName, jsonObject)
 
         self.addFileAction(
             jsonObject["storageId"],
             jsonObject["filePath"],
             jsonObject["action"],
             jsonObject["result"],
-            timeStamp,
+            jsonObject["timeStamp"],
             jsonObject["contentType"],
             json.dumps(jsonObject, indent=4),
         )
@@ -158,9 +177,7 @@ class FileActionsStorage:
         cursor.close()
 
         # Create a JSON object with the table name and rows
-        jsonObject = {
-            "tableName": result
-        }
+        jsonObject = {"tableName": result}
 
         return jsonObject
 
