@@ -1,5 +1,5 @@
 {
-    "PreferredRecorder": "python", 
+    "PreferredRecorder": "python",
     "DevicePath": "voltageMonitor.py",
     "RecordingPath": "$HOME/VoltageMonitor",
     "RecordingClipLengthInMinutes": 5,
@@ -7,5 +7,5 @@
     "IsTestMode": true,
     "OutputExtension": "txt",
     "SkipPostCompression": true,
-    "StorageScriptPath": "/home/diyaqua/Installer/storageServiceScripts/StoreItem.py"
+    "StorageScriptPath": "F:/temp/DiyAquanauts-HoldingCell/Installer/storageServiceScripts/StoreItem.py"
 }

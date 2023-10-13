@@ -158,6 +158,7 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+Installer/captureScripts/Video/
 Installer/ioa-processing/outputImages/
 Installer/storageServiceScripts/journals/
 Installer/storageServiceScripts/storage.db
@@ -165,3 +166,5 @@ Installer/ioa-processing/output_video.mp4
 Installer/ioa-processing/outputImages.zip
 Installer/ioa-processing/outputVideo.mp4
 Installer/ioa-processing/objectCountResults.json
+Installer/captureScripts/output.mp4
+Installer/captureScripts/output.h264

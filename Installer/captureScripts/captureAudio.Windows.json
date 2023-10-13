@@ -9,5 +9,5 @@
     "IsTestMode": true,
     "OutputExtension": "wav",
     "SkipPostCompression": false,
-    "StorageScriptPath": "/home/diyaqua/Installer/storageServiceScripts/StoreItem.py"
+    "StorageScriptPath": "F:/temp/DiyAquanauts-HoldingCell/Installer/storageServiceScripts/StoreItem.py"
 }

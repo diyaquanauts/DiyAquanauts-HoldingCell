@@ -47,7 +47,7 @@ def determineInputType(input):
         except ValueError:
             try:
                 val = datetime.strptime(input, "%Y-%m-%d~%H_%M_%S")
-                # print(val)
+                print(val)
                 retVal = "datetime-a"
             except ValueError:
                 pass
@@ -78,12 +78,18 @@ def decodeFromBaseX(encoded, alphabet="abcdefghijklmnopqrstuvwxyz"):
 def encodeToBaseX(num, alphabet="abcdefghijklmnopqrstuvwxyz"):
     base = len(alphabet)
     encoded = ""
+
+    try:
+        # Try to convert to integer
+        num = int(num)
+    except ValueError:
+        raise TypeError(f"encodeToBaseX: The 'num' argument ('{num}') could not be converted to a number...")
+
     while num > 0:
         remainder = num % base
         encoded = alphabet[remainder] + encoded
         num //= base
     return encoded
-
 
 def convertBasexToDateTime(baseX):
     ticks = decodeFromBaseX(baseX)
@@ -118,7 +124,7 @@ def loadConfig():
 def formatTimestamp(timestampObj):
     timestampType = determineInputType(timestampObj)
 
-    # print(f"Timestamp Type: {timestampType}")
+    print(f"Timestamp Type: {timestampType}")
 
     retVal = None
 
@@ -195,15 +201,15 @@ if __name__ == "__main__":
 
     storageId = formatTimestamp(args.timestamp)
 
-    # print(f"storageId: {storageId}")
+    print(f"storageId: {storageId}")
 
     dateTimeObj = convertTicksToDatetime(decodeFromBaseX(storageId))
 
-    # print(f"dateTimeObj: {dateTimeObj}")
+    print(f"dateTimeObj: {dateTimeObj}")
 
     minuteCodes = minCodesGen.getBlockOfMinuteCodes(dateTimeObj, blockCodeCount = 5)
 
-    # print(f"minuteCodes: {minuteCodes}")
+    print(f"minuteCodes: {minuteCodes}")
 
     result = storage.storeItem(
         storageId,
