@@ -70,7 +70,6 @@ class StorageService:
 
         return retVal
 
-
 if __name__ == "__main__":
     from MinuteCodes import MinuteCodes
     from DateTimeConverter import DateTimeConverter
