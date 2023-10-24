@@ -4,8 +4,10 @@
     "DevicePath": "plughw:1,0",
     "RecordingClipLengthInMinutes": 5,
     "PreferLargestAvailableMount": true,
+    "FFmpegInputFormatSource": "-f v4l2",
     "FFmpegInputFormat": " -input_format mjpeg",
     "IsTestMode": true,
     "OutputExtension": "wav",
-    "SkipPostCompression": false
+    "SkipPostCompression": false,
+    "StorageScriptPath": "/home/diyaqua/Installer/storageServiceScripts/StoreItem.py"
 }

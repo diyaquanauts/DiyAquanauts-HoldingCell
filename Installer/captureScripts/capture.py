@@ -2,14 +2,15 @@
 from datetime import datetime
 import json
 import logging
-import multiprocessing
+from multiprocessing import Process
 import os
 from pathlib import Path
 import psutil
+import shlex
 import shortuuid
-import shutil
 import subprocess
 import sys
+import time
 from types import SimpleNamespace
 
 #########################################################
@@ -19,8 +20,23 @@ from types import SimpleNamespace
 #
 scriptFullPath = Path(__file__)
 localDir = str(scriptFullPath.parent)
+
+# Just in case this is a windows based environment, search
+# for the ':' character within the first five characters
+index = localDir.find(":", 0, 5)
+
+# If ':' is found, return everything after it
+if index != -1:
+    localDir = localDir[index + 1 :]
+
 print(localDir)
-logFilePath = localDir + "/logs" + sys.argv[1].upper() + ".log"
+
+sysArgv = "-v"
+
+if len(sys.argv) > 1:
+    sysArgv = sys.argv[1]
+
+logFilePath = localDir + f"/logs{sysArgv.upper()}.log"
 stopFile = os.path.join(localDir, "capture.stop")
 
 ######################################################
@@ -85,28 +101,34 @@ modelNameFilePath = "/proc/device-tree/model"
 if os.path.isfile(modelNameFilePath) is not True:
     log("Unable to find model file at path!")
     log("   ---> Model filepath: '" + modelNameFilePath + "'")
-    sys.exit("      ***   Please check to see if this is Raspian based OS!   ***")
+    # sys.exit("      ***   Please check to see if this is Raspian based OS!   ***")
+    log(
+        "      ***   "
+        + "This does not appear to be a Raspian based OS "
+        + "and may not function as expected!"
+        + "   ***"
+    )
+else:
+    #  Grab the machine model...
+    f = open(modelNameFilePath, mode="rt")
+    modelName = f.read()
+    f.close()
+    modelName = modelName.rstrip("\x00")
 
-#  Grab the machine model...
-f = open(modelNameFilePath, mode="rt")
-modelName = f.read()
-f.close()
-modelName = modelName.rstrip("\x00")
-
-log("Detected machine model: '" + modelName + "'...")
+    log("Detected machine model: '" + modelName + "'...")
 
 #  Determine if this is an audio or video capture...
 captureLabel = "UNKNOWN!"
 
 log("    ")
-log("Startup argument: " + sys.argv[1])
+log("Startup argument: " + sysArgv)
 log("    ")
 
-if sys.argv[1] == "-a":
+if sysArgv == "-a":
     captureLabel = "Audio"
-elif sys.argv[1] == "-v":
+elif sysArgv == "-v":
     captureLabel = "Video"
-elif sys.argv[1] == "-vm":
+elif sysArgv == "-vm":
     captureLabel = "Voltage"
 
 log("   ")
@@ -137,45 +159,13 @@ log(rawJsonData)
 log("   ")
 
 # Parse JSON into an object with attributes corresponding to dict keys.
-configObject = json.loads(rawJsonData, object_hook=lambda d: SimpleNamespace(**d))
+cfg = json.loads(rawJsonData, object_hook=lambda d: SimpleNamespace(**d))
 
-######################################################
-#  *** THE ALL IMPORTANT SETTINGS ***
+################################################
 #  Capture related variables we need to set...
-#
-if captureLabel == "Audio":
-    preferredRecorder = configObject.PreferredRecorder
-    devicePath = configObject.DevicePath
-    recordingQuality = configObject.RecordingQuality
-    recordingClipLengthInMinutes = configObject.RecordingClipLengthInMinutes
-    preferLargestAvailableMount = configObject.PreferLargestAvailableMount
-    ffmpegInputFormat = configObject.FFmpegInputFormat
-    outputExtension = configObject.OutputExtension
-    skipPostCompression = configObject.SkipPostCompression
-
-elif captureLabel == "Video":
-    preferredRecorder = configObject.PreferredRecorder  # "ffmpeg"
-    screenWidth = configObject.ScreenWidth  # 1280
-    screenHeight = configObject.ScreenHeight  # 720
-    devicePath = configObject.DevicePath  # "/dev/video0"
-    recordingPath = configObject.RecordingPath
-    recordingClipLengthInMinutes = configObject.RecordingClipLengthInMinutes  # 5
-    preferLargestAvailableMount = configObject.PreferLargestAvailableMount  # True
-    ffmpegInputFormat = configObject.FFmpegInputFormat  # " -input_format mjpeg"
-    outputExtension = configObject.OutputExtension  # Determines the output file type
-    skipPostCompression = configObject.SkipPostCompression
-
-elif captureLabel == "Voltage":
-    preferredRecorder = configObject.PreferredRecorder
-    devicePath = configObject.DevicePath
-    recordingPath = configObject.RecordingPath
-    recordingClipLengthInMinutes = configObject.RecordingClipLengthInMinutes
-    preferLargestAvailableMount = configObject.PreferLargestAvailableMount
-    outputExtension = configObject.OutputExtension
-    skipPostCompression = configObject.SkipPostCompression
 
 #  --->>> *The IS_TEST_MODE variable should *NORMALLY* be set to False...*
-IS_TEST_MODE = configObject.IsTestMode
+IS_TEST_MODE = cfg.IsTestMode
 
 #  Variables that get set in the course of things...
 mountpointPrefix = ""
@@ -188,11 +178,11 @@ uniqueSessionId = shortuuid.uuid()
 
 #  If this is test mode, then we're going to do some overrides...
 if IS_TEST_MODE:
-    recordingClipLengthInMinutes = 1
+    cfg.RecordingClipLengthInMinutes = 0.2
     testClipMax = 2
 #  Set the clip length and commandline timeout
 #  based on the outcome of the previous lines...
-recordingClipInSeconds = recordingClipLengthInMinutes * 60
+recordingClipInSeconds = cfg.RecordingClipLengthInMinutes * 60
 recordingClipInMilliseconds = recordingClipInSeconds * 1000
 cmdCallTimeout = recordingClipInMilliseconds + (10 * 1000)
 
@@ -200,10 +190,10 @@ cmdCallTimeout = recordingClipInMilliseconds + (10 * 1000)
 #  Checks to see if there is a mount point preference for available drive space
 #  and sets clip drop points according to that preference...
 def CheckMountPoint():
-    #  If 'preferLargestAvailableMount' is set to True,
+    #  If 'cfg.PreferLargestAvailableMount' is set to True,
     #  the we need to determine the root directory to use
     #  for dumping the clips into...
-    if preferLargestAvailableMount:
+    if cfg.PreferLargestAvailableMount:
         partitions = psutil.disk_partitions()
         bestMountpointFreeSpace = 0
         bestMountpoint = ""
@@ -238,8 +228,8 @@ def SetSystemPrefs():
     #        reads in the appropriate data from a config file...
     global captureCmd
     global targetOutputDirectory
-    global screenWidth
-    global screenHeight
+    # global cfg.ScreenWidth
+    # global cfg.ScreenHeight
     global captureLabel
 
     #  Set the directory to dump the capture files into...
@@ -252,20 +242,20 @@ def SetSystemPrefs():
     log("  ")
     log("Output directory set to '" + targetOutputDirectory + "'...")
     log("  ")
-    log("Preferred recording method: '" + preferredRecorder + "'...")
+    log("Preferred recording method: '" + cfg.PreferredRecorder + "'...")
 
     #  Start making some decisions based on the settings data from above...
     if captureLabel == "Audio":
-        if preferredRecorder == "arecord" or preferredRecorder == "default":
+        if cfg.PreferredRecorder == "arecord" or cfg.PreferredRecorder == "default":
             captureCmd = (
                 "arecord -D "
-                + devicePath  # arecord -D plughw:0,0 -f cd -d 10 -V stereo test.wav
+                + cfg.DevicePath  # arecord -D plughw:0,0 -f cd -d 10 -V stereo test.wav
                 + " -f "
-                + recordingQuality  # audio recording quality
+                + cfg.RecordingQuality  # audio recording quality
                 + " -d "
                 + str(recordingClipInSeconds)  # Length of clip...
             )
-        elif preferredRecorder == "ffmpeg":
+        elif cfg.PreferredRecorder == "ffmpeg":
             #  Need to incorporate this form of the command:
             #
             #     ffmpeg -f pulse
@@ -282,33 +272,36 @@ def SetSystemPrefs():
             #  It's just there as a placeholder
             #  till we figure out the correct cmd format...
             captureCmd = (
-                "ffmpeg " + devicePath + " -c copy -t " + str(recordingClipInSeconds)
+                "ffmpeg "
+                + cfg.DevicePath
+                + " -c copy -t "
+                + str(recordingClipInSeconds)
             )
     elif captureLabel == "Video":
-        if preferredRecorder == "libcamera" or preferredRecorder == "default":
+        if cfg.PreferredRecorder == "libcamera" or cfg.PreferredRecorder == "default":
             captureCmd = (
                 "libcamera-vid -t "
                 + str(recordingClipInMilliseconds)  # Length of clip...
                 + " --width "
-                + str(screenWidth)  # Screen X dimensions
+                + str(cfg.ScreenWidth)  # Screen X dimensions
                 + " --height "
-                + str(screenHeight)  # Screen Y dimensions...
+                + str(cfg.ScreenHeight)  # Screen Y dimensions...
                 + " --nopreview "  # Do not show a preview...
                 + " --autofocus-mode continuous"  # Set the autofocus mode...
                 + " -o "  # The output filePath will be appended here...
             )
-        elif preferredRecorder == "ffmpeg":
+        elif cfg.PreferredRecorder == "ffmpeg":
             captureCmd = (
-                f"ffmpeg -f v4l2 {ffmpegInputFormat} "
-                + f"-video_size {screenWidth}x{screenHeight} "
-                + f"-i {devicePath} "
+                f"ffmpeg {cfg.FFmpegInputFormatSource} {cfg.FFmpegInputFormat} "
+                + f"-video_size {cfg.ScreenWidth}x{cfg.ScreenHeight} "
+                + f"-i {cfg.DevicePath} "
                 + f"-c copy -t {recordingClipInSeconds}"
             )
     elif captureLabel == "Voltage":
         captureCmd = (
-            f"{preferredRecorder} {devicePath} "
+            f"{cfg.PreferredRecorder} {cfg.DevicePath} "
             + f"-t {recordingClipInSeconds * 1000} "
-            + f"-o "
+            + "-o "
         )
 
 
@@ -376,58 +369,6 @@ def ReportCmdHiccup(commandResults=None, exceptionObj=None):
 
 
 ################################################################
-#  Moves a given file from its directory to a subdirectory
-#  internal to the directory...
-def moveToSubDir(filename, subdirectory):
-    # Check if the subdirectory exists, create it if not
-    if not os.path.exists(subdirectory):
-        os.makedirs(subdirectory)
-
-    # Get the current directory of the script
-    currentDir = os.getcwd()
-
-    # Construct the full source and destination paths
-    sourcePath = os.path.join(currentDir, filename)
-    targetPath = os.path.join(currentDir, subdirectory, filename)
-
-    try:
-        # Move the file to the subdirectory
-        shutil.move(sourcePath, targetPath)
-        print(f"File '{filename}' moved to '{subdirectory}' successfully.")
-    except Exception as e:
-        print("An error occurred:", e)
-
-
-################################################################
-#  Captures a single frame for in situ camera checks...
-def TakeSnapshot(filePath):
-    #  Construct the image file name...
-    imageFileName = f"{filePath}.png"
-    #  Construct the clip recording command line...
-    fullCmd = f"ffmpeg -f v4l2 -i {devicePath} -frames:v 1 {imageFileName}"
-    log("   ")
-    log(fullCmd)
-    log("   ")
-
-    try:
-        #  Here's where the actual command line gets executed...
-        cmdResults = subprocess.run(
-            fullCmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=cmdCallTimeout,
-        )
-        if cmdResults.returncode != 0:
-            ReportCmdHiccup(commandResults=cmdResults)
-        else:
-            moveToSubDir(imageFileName, "Snapshots")
-    except Exception as err:
-        ReportCmdHiccup(exceptionObj=err)
-
-
-################################################################
 #  Captures clips via the preferred command line method...
 def CaptureViaCmdLine(filePath):
     #  Construct the clip recording command line...
@@ -452,80 +393,33 @@ def CaptureViaCmdLine(filePath):
         ReportCmdHiccup(exceptionObj=err)
 
 
-def CompressFile(inputPath, outputPath, compressCmd):
-    try:
-        #  Here's where the actual command line gets executed...
-        cmdResults = subprocess.run(
-            compressCmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=cmdCallTimeout,
-        )
-
-        inputSize = os.path.getsize(inputPath)
-        outputSize = os.path.getsize(outputPath)
-
-        percentDiff = ((outputSize - inputSize) / inputSize) * 100
-        percentDiff = abs(round(percentDiff))
-
-        if inputSize > outputSize:
-            log("Saving {}% file space on '{}'...".format(percentDiff, outputPath))
-            os.remove(inputPath)
-        else:
-            log("No compression savings for '{}'!".format(inputPath))
-            log("Bloated {}% file space on '{}'...".format(percentDiff, outputPath))
-            log("{} vs {}".format(inputSize, outputSize))
-            os.remove(outputPath)
-        if cmdResults.returncode != 0:
-            ReportCmdHiccup(commandResults=cmdResults)
-    except Exception as err:
-        ReportCmdHiccup(exceptionObj=err)
-
-
-def SpaceSaver(filePath):
-    global captureLabel
-
-    #  Settings some variables...
-    inputPath = filePath
-    outputPath = filePath
-    compressCmd = ""
-
-    #  What the command will look like if it's for Video...
-    if captureLabel == "Video":
-        outputPath = "{}.mkv".format(outputPath)
-        #  We're going to hard code it for the libx264
-        # codec using the "ultrafast" method.
-        #  Hoping for roughly a 30% savings here, but it could very well vary depending
-        #  on the footage.  Don't really have any idea yet, so...
-        compressCmd = (
-            f"sudo ionice -c 1 -n 0 ffmpeg -i {inputPath} "
-            + f"-c:v libx264 -preset ultrafast -crf 22 -c:a copy {outputPath}"
-        )
-    #  What the command will look like if it's for Audio...
-    elif captureLabel == "Audio":
-        outputPath = "{}.flac".format(outputPath)
-        #  We're going to hard code it for the FLAC codec, since it's completely
-        #  losseless and faster than snot off a goose, even on the Aquaspud!
-        #  I suspect the audio compression will be a lot more predictable, and we're
-        #  looking at probably an 80-90% file size savings...
-        compressCmd = "ffmpeg -i {} -c:a flac {}".format(inputPath, outputPath)
-    #  Okay, here we're actually going to spawn
-    #  ain't-gonna-wait-for-the-train process...
-    process = multiprocessing.Process(
-        target=CompressFile, args=(inputPath, outputPath, compressCmd)
-    )
-    process.start()
-
-    #  Returning the pid in case we need to track a runaway later...
-    return process.pid
-
-
 def CheckForStopCapture():
     global stopFile
     return os.path.exists(stopFile)
 
+
+def StoreCapture(storageScriptPath, storageId, captureLabel, filePath):
+    cmdLine = (
+        f"python " +
+        f"{storageScriptPath} "
+        + f"-t {storageId} "
+        + f"-a store -r + -c {captureLabel} "
+        + f"-f {filePath}"
+    )
+
+    cmdLine = cmdLine.replace("\\", "/")
+
+    log(f"Calling storage process: {cmdLine}")
+
+    # Parse the command string into a list of arguments
+    args = shlex.split(cmdLine)
+
+    try:
+        # Start the subprocess without waiting for it to complete
+        process = subprocess.Popen(args)
+        log(f"ProcessId: {process.pid}")
+    except Exception as e:
+        log(f"ERROR!]\n\n{e}")
 
 ####################################
 #
@@ -545,8 +439,10 @@ while keepRecording:
     #  If we're in test mode, warn the user...
     if IS_TEST_MODE:
         DisplayTestWarning()
+
     #  Grab a file timestamp...
     timeStamp = datetime.now().strftime("%Y-%m-%d~%H_%M_%S")
+    storageId = time.time_ns()
 
     #  Construct the full file path and name...
     filePath = (
@@ -556,21 +452,22 @@ while keepRecording:
         + "_"
         + timeStamp
         + "."
-        + outputExtension
+        + cfg.OutputExtension
     )
 
     #  Index the clip count...
     clipCount = clipCount + 1
 
+    clipLine = f"--  CLIP # {clipCount}  --"
+
+    print("-" * len(clipLine))
+    print(clipLine)
+    print("-" * len(clipLine))
+
     try:
-        if captureLabel == "Video":
-            TakeSnapshot(filePath)
         CaptureViaCmdLine(filePath)
-        if not skipPostCompression:
-            pid = SpaceSaver(filePath)
-            log("Spawned 'SpaceSaver' on pid {}...".format(pid))
-        else:
-            log("Skip Post Compression set to 'TRUE'!!!!")
+        StoreCapture(cfg.StorageScriptPath, storageId, captureLabel, filePath)
+
     finally:
         #  Check for IS_TEST_MODE again...
         if IS_TEST_MODE:
@@ -587,6 +484,11 @@ while keepRecording:
             log("   ")
             log("-" * 80)
             log(
-                "======  THE CAPTURE.STOP WILL BE DELETED UPON THE NEXT CAPTURE START!  ======="
+                "-" * 6
+                + "  "
+                + "THE CAPTURE.STOP FILE WILL BE DELETED UPON THE NEXT CAPTURE START!"
+                + "  "
+                + "-" * 6
             )
             log("-" * 80)
+# ffmpeg -f dshow -i video="Lenovo EasyCamera" output.h264

@@ -137,15 +137,15 @@ class MinuteCodes:
         return retVal
 
     @staticmethod
-    def getCurrentBlockOfCodes(numberOfAdditionalCodes=5):
+    def getCurrentBlockOfCodes(blockCodeCount=5):
         ymdhm = MinuteCodes._datetimeToArray(datetime.datetime.now())
 
-        retVal = MinuteCodes.getBlockOfMinuteCodes(ymdhm, numberOfAdditionalCodes)
+        retVal = MinuteCodes.getBlockOfMinuteCodes(ymdhm, blockCodeCount)
 
         return retVal
 
     @staticmethod
-    def getBlockOfMinuteCodes(dateTimeObj, numberOfAdditionalCodes=5):
+    def getBlockOfMinuteCodes(dateTimeObj, blockCodeCount=5):
         retVal = []
 
         if MinuteCodes._isYmdhmArray(dateTimeObj):
@@ -153,7 +153,7 @@ class MinuteCodes:
         else:
             ymdhm = MinuteCodes._datetimeToArray(dateTimeObj)
 
-        for i in range(1, numberOfAdditionalCodes + 1):
+        for i in range(1, blockCodeCount + 1):
             minuteCode = MinuteCodes.getMinuteCode(ymdhm)
 
             retVal.append(minuteCode)

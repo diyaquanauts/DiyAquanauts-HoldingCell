@@ -83,7 +83,7 @@ if __name__ == "__main__":
         "contentType": "video",
         "minuteCodes": [],
         "description": "fake file that refers to nothing",
-        "filePath": ""
+        "filePath": "",
     }
 
     for i in range(1, 24, 1):
@@ -99,10 +99,7 @@ if __name__ == "__main__":
         if i % 100 == 0:
             print(f"Record count: {i}")
 
-    payload = {
-        "criteria": ["store", "ioa"],
-        "contentType": "video"
-    }
+    payload = {"criteria": ["store", "ioa"], "contentType": "video"}
 
     results = StorageService.findAvailableProcessTarget(payload)
 

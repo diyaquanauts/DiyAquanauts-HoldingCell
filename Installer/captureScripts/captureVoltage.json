@@ -6,5 +6,6 @@
     "PreferLargestAvailableMount": true,
     "IsTestMode": true,
     "OutputExtension": "txt",
-    "SkipPostCompression": true
+    "SkipPostCompression": true,
+    "StorageScriptPath": "/home/diyaqua/Installer/storageServiceScripts/StoreItem.py"
 }

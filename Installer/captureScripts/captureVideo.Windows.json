@@ -1,0 +1,15 @@
+{
+    "PreferredRecorder": "ffmpeg",
+    "ScreenWidth": 1280,
+    "ScreenHeight": 720,
+    "DevicePath": "video=\"Lenovo EasyCamera\"",
+    "RecordingPath": "~/usbdrive/Videos",
+    "RecordingClipLengthInMinutes": 5,
+    "PreferLargestAvailableMount": true,
+    "FFmpegInputFormatSource": "-f dshow",
+    "FFmpegInputFormat": "",
+    "IsTestMode": true,
+    "OutputExtension": "mjpg",
+    "SkipPostCompression": false,
+    "StorageScriptPath": "F:/temp/DiyAquanauts-HoldingCell/Installer/storageServiceScripts/StoreItem.py"
+}

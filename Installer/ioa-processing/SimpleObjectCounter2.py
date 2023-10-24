@@ -3,6 +3,7 @@ from fileGuiOperations import fileSelection
 import json
 import os
 import random
+import sys
 
 
 class SimpleObjectCounter:
@@ -10,9 +11,16 @@ class SimpleObjectCounter:
     imageDir = ""
     results = []
 
-    def __init__(self, vidPath, frameInterval=10, imageDir="output_images"):
-        self.vidPath = vidPath
-        self.imageDir = imageDir
+    def __init__(self, inputVideoPath, frameInterval=10, imageDir="outputImages"):
+        self.inputVideoPath = inputVideoPath
+
+        if imageDir == "outputImages":
+            vidDir = os.path.dirname(inputVideoPath)
+            self.imageDir = os.path.join(vidDir, imageDir)
+            os.makedirs(self.imageDir, exist_ok=True)
+        else:
+            self.imageDir = imageDir
+
         self.frameInterval = frameInterval
         self.background_subtractor = cv2.createBackgroundSubtractorMOG2()
 
@@ -27,10 +35,18 @@ class SimpleObjectCounter:
             file_path = os.path.join(self.imageDir, filename)
             os.remove(file_path)
 
+    def _getFullFilePath(self, filePath):
+        retVal = filePath
+
+        if not os.path.isabs(filePath):
+            retVal = os.path.join(os.getcwd(), filePath)
+
+        return retVal
+
     # Contrast adjustment factor (1.0 is no change)
     # Brightness adjustment factor (positive for brighter, negative for darker)
-    def countObjects(self, contrast=2.0, brightness = -70):
-        cap = cv2.VideoCapture(self.vidPath)
+    def countObjects(self, contrast=2.0, brightness=-70, contourAreaThreshold=50):
+        cap = cv2.VideoCapture(self.inputVideoPath)
         self.frameIndex = 0
         self.results = []
 
@@ -50,7 +66,8 @@ class SimpleObjectCounter:
                 for contour in contours:
                     area = cv2.contourArea(contour)
 
-                    if area > 50:  # Adjust the threshold as needed
+                    # Adjust the threshold as needed
+                    if area > contourAreaThreshold:
                         objCount += 1
                         # Generate a random color for the outline
                         color = (
@@ -61,7 +78,9 @@ class SimpleObjectCounter:
                         # Make the contour outline thinner
                         cv2.drawContours(frame, [contour], -1, color, 1)
 
-                self.results.append({ "frame": { "index": self.frameIndex, "objCount": objCount }})
+                self.results.append(
+                    {"frame": {"index": self.frameIndex, "objCount": objCount}}
+                )
                 yield objCount, frame
 
             self.frameIndex += 1
@@ -117,7 +136,7 @@ class SimpleObjectCounter:
         image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
         # Save the image with the frame index number
-        self.imageDir = "output_images"  # You can specify your desired output directory
+        self.imageDir = "outputImages"  # You can specify your desired output directory
         os.makedirs(self.imageDir, exist_ok=True)
         output_file = os.path.join(self.imageDir, f"frame_{frameIndex:08d}.png")
         cv2.imwrite(output_file, image_rgb)
@@ -139,6 +158,8 @@ class SimpleObjectCounter:
 
         frameIndexNumber = 0  # Initialize frame number
 
+        imgCount = 0
+
         for imageFile in imageFiles:
             # Read and write the current frame multiple times (frameInterval)
             currentFrame = cv2.imread(os.path.join(self.imageDir, imageFile))
@@ -149,46 +170,102 @@ class SimpleObjectCounter:
             if frameIndexNumber == 0 and frameInterval > 1:
                 out.write(currentFrame)
                 frameIndexNumber += 1
+
+            imgCount += 1
+
+            if (imgCount % 10) == 0:
+                print(".", end="")
+
+        print(".")
+
         # Release the video writer
         out.release()
-        print(f"Video saved to {outputPath}")
+
+        retVal = self._getFullFilePath(outputPath)
+
+        print(f"Video saved to {retVal}")
+
+        return retVal
 
     def saveResultsToJson(self, fileName):
         with open(fileName, "w") as json_file:
             json.dump(self.results, json_file)
+        retVal = self._getFullFilePath(fileName)
 
-# Usage
-if __name__ == "__main__":
-    fileOps = fileSelection()
+        print(f"IoA summary saved to {retVal}")
 
-    vidPath = fileOps.selectFile("mp4")
+        return retVal
 
-    frameInterval = 5
-    objCounter = SimpleObjectCounter(vidPath, frameInterval)
 
-    for objCount, frame in objCounter.countObjects():
-        print(f"Frame: {objCounter.frameIndex}, Objects: {objCount}")
+class IoAGenerator:
+    def generateIndexOfActivity(
+        inputVideoPath,
+        frameInterval,
+        outputVideoPath,
+        ioaOutputPath,
+        fps=30,
+        displayFrames=False,
+    ):
+        objCounter = SimpleObjectCounter(inputVideoPath, frameInterval)
 
-        # Display or save the frame with object outlines
-        annotatedImg = objCounter.saveAnnotatedImg(
-            frame, objCounter.frameIndex, objCount
+        print("Counting objects in image...")
+
+        imgCount = 0
+
+        for objCount, frame in objCounter.countObjects():
+            # print(f"Frame: {objCounter.frameIndex}, Objects: {objCount}")
+            # Display or save the frame with object outlines
+            annotatedImg = objCounter.saveAnnotatedImg(
+                frame, objCounter.frameIndex, objCount
+            )
+
+            imgCount += 1
+
+            if (imgCount % 10) == 0:
+                print(".", end="")
+
+            if displayFrames:
+                cv2.imshow("Outlined Objects", annotatedImg)
+
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+
+        print(".")
+
+        if displayFrames:
+            cv2.destroyAllWindows()
+
+        print("Generating video file...")
+
+        ioaVideoOutputPath = objCounter.reassembleVideoFromImages(outputVideoPath, fps)
+
+        print("Dumping results to JSON...")
+
+        ioaJsonOuputPath = objCounter.saveResultsToJson(ioaOutputPath)
+
+        return {"ioaReport": ioaJsonOuputPath, "ioaVideo": ioaVideoOutputPath}
+
+    def _test():
+        fileOps = fileSelection()
+
+        # inputVideoPath = fileOps.selectFile("mp4")
+        inputVideoPath = "F:/temp/DiyAquanauts-HoldingCell/Installer/ioa-processing/30s-sample-footage-2023-09-01-131920_002.mp4"
+
+        frameInterval = 5
+
+        # Desired output video file path
+        outputVideoPath = "outputVideo.mp4"
+
+        # Desired JSON file path
+        ioaOutputPath = "objectCountResults.json"
+
+        # Frames per second for the output video
+        fps = 30
+
+        IoAGenerator.generateIndexOfActivity(
+            inputVideoPath, frameInterval, outputVideoPath, ioaOutputPath
         )
-        cv2.imshow("Outlined Objects", annotatedImg)
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-        # time.sleep(0.01)
 
-    cv2.destroyAllWindows()
-
-    print("Generating video file...")
-
-    output_video_path = "output_video.mp4"  # Desired output video file path
-    fps = 30  # Frames per second for the output video
-
-    objCounter.reassembleVideoFromImages(output_video_path, fps)
-
-    print("Dumping results to JSON...")
-
-    results_file_path = "object_count_results.json"  # Desired JSON file path
-    objCounter.saveResultsToJson(results_file_path)
+if __name__ == "__main__":
+    IoAGenerator._test()

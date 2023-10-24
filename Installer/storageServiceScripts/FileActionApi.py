@@ -49,7 +49,7 @@ class SimpleRestClient:
 
         return responseData
 
-class FileActionsApi:
+class FileActionApi:
     def __init__(self, baseAddress, port):
         #  Prep some objects for use...
         self.client = SimpleRestClient()
@@ -110,9 +110,10 @@ class FileActionsApi:
         return responseData
 
 def _shortTest():
-    storeApi = FileActionsApi("192.168.8.155","5000")
+    storeApi = FileActionApi("192.168.8.155","5000")
 
     minCodes = MinuteCodes.getCurrentBlockOfCodes()
+    
     storageId = DateTimeConverter.getBase26TimeStamp()
 
     results = storeApi.storeItem(storageId, "stored", "successful", "video", minCodes, "Test file - ignore", "/home/diyaqua/Videos/fake.mp4")
